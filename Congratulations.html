@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Construction Pro</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ font-family:Arial,sans-serif;
+ background:#f1f3f6;
+ color:#222;
+}
+header{
+ background:#172b4d;
+ color:white;
+ padding:22px 16px;
+ text-align:center;
+}
+header h1{margin:0;font-size:25px}
+header p{margin:7px 0 0;color:#cbd5e1}
+.container{padding:15px;max-width:600px;margin:auto}
+.stats{
+ display:grid;
+ grid-template-columns:repeat(2,1fr);
+ gap:12px;
+}
+.card{
+ background:white;
+ padding:17px;
+ border-radius:12px;
+ box-shadow:0 2px 8px #0001;
+}
+.card h2{margin:0;color:#e58a18;font-size:27px}
+.card p{margin:6px 0 0;color:#666}
+input,select,textarea{
+ width:100%;
+ padding:13px;
+ margin:7px 0;
+ border:1px solid #ddd;
+ border-radius:8px;
+ font-size:15px;
+ background:white;
+}
+button{
+ border:0;
+ padding:13px;
+ border-radius:8px;
+ background:#e58a18;
+ color:white;
+ font-weight:bold;
+ font-size:15px;
+ cursor:pointer;
+}
+.addbtn{width:100%;margin:15px 0}
+.site{
+ background:white;
+ padding:15px;
+ border-radius:12px;
+ margin:12px 0;
+ box-shadow:0 2px 8px #0001;
+}
+.site h3{margin:0 0 8px;color:#172b4d}
+.site p{margin:6px 0;font-size:14px}
+.actions{display:flex;gap:8px;margin-top:12px}
+.actions button{flex:1}
+.delete{background:#dc3545}
+.edit{background:#172b4d}
+.gallery{
+ display:flex;
+ flex-wrap:wrap;
+ gap:8px;
+ margin-top:10px
+}
+.gallery img{
+ width:90px;height:90px;
+ object-fit:cover;border-radius:8px
+}
+label{font-size:14px;font-weight:bold}
+.formbox{
+ background:white;padding:16px;
+ border-radius:12px;
+ margin-top:15px;
+}
+.hidden{display:none}
+#empty{text-align:center;color:#888;padding:20px}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>🏗️ CONSTRUCTION PRO</h1>
+<p>Construction Site & Client Management</p>
+</header>
+
+<div class="container">
+
+<div class="stats">
+<div class="card">
+<h2 id="total">0</h2>
+<p>Total Clients</p>
+</div>
+<div class="card">
+<h2 id="active">0</h2>
+<p>Active Projects</p>
+</div>
+</div>
+
+<input id="search" placeholder="🔍 Search Client Name / Mobile Number..." oninput="showSites()">
+
+<button class="addbtn" onclick="newForm()">+ ADD NEW CLIENT</button>
+
+<div id="form" class="formbox hidden">
+<h3 id="formTitle">Add New Client</h3>
+
+<label>मकान मालिक का नाम *</label>
+<input id="name" placeholder="Client Name">
+
+<label>मोबाइल नंबर</label>
+<input id="phone" placeholder="Mobile Number" type="tel">
+
+<label>साइट का पूरा पता</label>
+<textarea id="address" placeholder="Site Address"></textarea>
+
+<label>प्लॉट की लंबाई (Feet)</label>
+<input id="length" type="number" placeholder="जैसे 40">
+
+<label>प्लॉट की चौड़ाई (Feet)</label>
+<input id="width" type="number" placeholder="जैसे 30">
+
+<label>Construction Type</label>
+<select id="type">
+<option>Residential</option>
+<option>Commercial</option>
+<option>Other</option>
+</select>
+
+<label>कितने फ्लोर बनाने हैं?</label>
+<input id="floors" type="number" placeholder="जैसे 2">
+
+<label>Project Status</label>
+<select id="status">
+<option>Under Construction</option>
+<option>Planning</option>
+<option>Completed</option>
+</select>
+
+<label>Construction Site Photos</label>
+<input id="photos" type="file" accept="image/*" multiple>
+
+<button style="width:100%;margin-top:12px" onclick="saveSite()">SAVE CLIENT DETAILS</button>
+<button style="width:100%;margin-top:8px;background:#666" onclick="closeForm()">CANCEL</button>
+</div>
+
+<h3>📋 Construction Sites</h3>
+<div id="sites"></div>
+
+</div>
+
+<script>
+let clients=JSON.parse(localStorage.getItem("constructionClients")||"[]");
+let editId=null;
+
+function updateStats(){
+ document.getElementById("total").innerText=clients.length;
+ document.getElementById("active").innerText=
+ clients.filter(x=>x.status==="Under Construction").length;
+}
+
+function newForm(){
+ editId=null;
+ clearForm();
+ document.getElementById("formTitle").innerText="Add New Client";
+ document.getElementById("form").classList.remove("hidden");
+ window.scrollTo(0,0);
+}
+
+function closeForm(){
+ document.getElementById("form").classList.add("hidden");
+}
+
+function clearForm(){
+ ["name","phone","address","length","width","floors","photos"]
+ .forEach(id=>document.getElementById(id).value="");
+ document.getElementById("type").value="Residential";
+ document.getElementById("status").value="Under Construction";
+}
+
+function saveSite(){
+ let name=document.getElementById("name").value.trim();
+ if(!name){alert("कृपया क्लाइंट का नाम भरें");return;}
+
+ let files=Array.from(document.getElementById("photos").files);
+
+ Promise.all(files.map(file=>new Promise(resolve=>{
+  let reader=new FileReader();
+  reader.onload=()=>resolve(reader.result);
+  reader.onerror=()=>resolve(null);
+  reader.readAsDataURL(file);
+ }))).then(images=>{
+  let old=editId!==null?clients[editId]:null;
+
+  let site={
+   name,
+   phone:document.getElementById("phone").value,
+   address:document.getElementById("address").value,
+   length:document.getElementById("length").value,
+   width:document.getElementById("width").value,
+   type:document.getElementById("type").value,
+   floors:document.getElementById("floors").value,
+   status:document.getElementById("status").value,
+   photos:[...(old?.photos||[]),...images.filter(Boolean)]
+  };
+
+  if(editId!==null) clients[editId]=site;
+  else clients.unshift(site);
+
+  try{
+   localStorage.setItem("constructionClients",JSON.stringify(clients));
+  }catch(e){
+   alert("Storage भर गया है। कम फोटो चुनें या फोटो का आकार कम करें।");
+   return;
+  }
+
+  closeForm();
+  showSites();
+  updateStats();
+  alert("Client Details Successfully Saved!");
+ });
+}
+
+function showSites(){
+ let q=document.getElementById("search").value.toLowerCase();
+ let filtered=clients.map((x,i)=>({...x,id:i})).filter(x=>
+  x.name.toLowerCase().includes(q)||
+  x.phone.includes(q)
+ );
+
+ let html="";
+ filtered.forEach(x=>{
+ html+=`
+ <div class="site">
+ <h3>👤 ${escapeHTML(x.name)}</h3>
+ <p>📞 ${escapeHTML(x.phone||"-")}</p>
+ <p>📍 ${escapeHTML(x.address||"-")}</p>
+ <p>📐 Plot Size: ${escapeHTML(x.length||"0")} × ${escapeHTML(x.width||"0")} Ft</p>
+ <p>📏 Total Area: ${(Number(x.length||0)*Number(x.width||0)).toLocaleString("en-IN")} Sq.Ft.</p>
+ <p>🏢 Type: ${escapeHTML(x.type)}</p>
+ <p>🏠 Floors: ${escapeHTML(x.floors||"-")}</p>
+ <p>📌 Status: ${escapeHTML(x.status)}</p>
+ <div class="gallery">
+ ${(x.photos||[]).map(p=>`<img src="${p}" alt="Site Photo">`).join("")}
+ </div>
+ <div class="actions">
+ <button class="edit" onclick="editSite(${x.id})">EDIT</button>
+ <button class="delete" onclick="deleteSite(${x.id})">DELETE</button>
+ </div>
+ </div>`;
+ });
+
+ document.getElementById("sites").innerHTML=html||
+ '<div id="empty">कोई Construction Site नहीं मिली।<br>+ ADD NEW CLIENT दबाकर शुरुआत करें।</div>';
+}
+
+function editSite(i){
+ let x=clients[i];
+ editId=i;
+ ["name","phone","address","length","width","floors"]
+ .forEach(id=>document.getElementById(id).value=x[id]||"");
+ document.getElementById("type").value=x.type;
+ document.getElementById("status").value=x.status;
+ document.getElementById("photos").value="";
+ document.getElementById("formTitle").innerText="Edit Client Details";
+ document.getElementById("form").classList.remove("hidden");
+ window.scrollTo(0,0);
+}
+
+function deleteSite(i){
+ if(confirm("क्या आप इस Client का रिकॉर्ड डिलीट करना चाहते हैं?")){
+ clients.splice(i,1);
+ localStorage.setItem("constructionClients",JSON.stringify(clients));
+ showSites();
+ updateStats();
+ }
+}
+
+function escapeHTML(s){
+ return String(s??"").replace(/[&<>"']/g,c=>({
+ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+ })[c]);
+}
+
+showSites();
+updateStats();
+</script>
+
+</body>
+</html>
